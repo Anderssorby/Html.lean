@@ -8,7 +8,6 @@
     nixpkgs.url = "nixpkgs/nixos-unstable";
     flake-utils = {
       url = "github:numtide/flake-utils";
-      inputs.nixpkgs.follows = "nixpkgs";
     };
     # A lean dependency
     # lean-ipld = {
@@ -55,13 +54,22 @@
         };
 
         defaultPackage = self.packages.${system}.${name};
-        devShell = pkgs.mkShell {
-          inputsFrom = [ project.executable ];
-          buildInputs = with pkgs; [
-            leanPkgs.lean-dev
-          ];
-          LEAN_PATH = "./src:./test";
-          LEAN_SRC_PATH = "./src:./test";
+        devShells = {
+          default = pkgs.mkShell {
+            buildInputs = with pkgs; [
+              elan
+            ];
+            LEAN_PATH = "./src:./test";
+            LEAN_SRC_PATH = "./src:./test";
+          };
+          lean-dev = pkgs.mkShell {
+            inputsFrom = [ project.executable ];
+            buildInputs = with pkgs; [
+              leanPkgs.lean-dev
+            ];
+            LEAN_PATH = "./src:./test";
+            LEAN_SRC_PATH = "./src:./test";
+          };
         };
       });
 }

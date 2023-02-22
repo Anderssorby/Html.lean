@@ -78,8 +78,8 @@ def jsxText : Parser :=
       let s := takeWhile1Fn (not ∘ "[{<>}]$".contains) "expected JSX text" c s
       mkNodeToken `jsxText startPos c s }
 
-@[combinatorFormatter Doc.Jsx.jsxText] def jsxText.formatter : Formatter := pure ()
-@[combinatorParenthesizer Doc.Jsx.jsxText] def jsxText.parenthesizer : Parenthesizer := pure ()
+@[combinator_formatter Doc.Jsx.jsxText] def jsxText.formatter : Formatter := pure ()
+@[combinator_parenthesizer Doc.Jsx.jsxText] def jsxText.parenthesizer : Parenthesizer := pure ()
 
 syntax jsxAttrName := rawIdent <|> str
 syntax jsxAttrVal := str <|> group("{" term "}")
@@ -96,6 +96,22 @@ syntax "[" term "]" : jsxChild
 syntax jsxElement   : jsxChild
 
 scoped syntax:max jsxElement : term
+
+
+private def htmlHelper (n : Syntax) (children : Array Syntax) (m : Syntax) : MacroM (String × (TSyntax `term)):= do
+  unless n.getId == m.getId do
+    withRef m <| Macro.throwError s!"Leading and trailing part of tags don't match: '{n}', '{m}'"
+  let mut cs ← `(#[])
+  for child in children do
+    cs ← match child with
+    | `(jsxChild|$t:jsxText)    => `(($cs).push (Html.text $(quote t.raw[0]!.getAtomVal)))
+    -- TODO(WN): elab as list of children if type is `t Html` where `Foldable t`
+    | `(jsxChild|{$t})          => `(($cs).push ($t : Html))
+    | `(jsxChild|[$t])          => `($cs ++ ($t : Array Html))
+    | `(jsxChild|$e:jsxElement) => `(($cs).push ($e:jsxElement : Html))
+    | _                         => Macro.throwUnsupported
+  let tag := toString n.getId
+  pure <| (tag, cs)
 
 def translateAttrs (attrs : Array Syntax) : MacroM Syntax := do
   let mut as ← `(#[])
@@ -117,21 +133,12 @@ def translateAttrs (attrs : Array Syntax) : MacroM Syntax := do
 
 macro_rules
   | `(<$n $attrs* />) => do
-    `(Html.element $(quote (toString n.getId)) true $(← translateAttrs attrs) #[])
+    let kind := quote (toString n.getId)
+    let attrs ← translateAttrs attrs
+    `(Html.element $kind true $attrs #[])
   | `(<$n $attrs* >$children*</$m>) => do
-    unless n.getId == m.getId do
-      withRef m <| Macro.throwError s!"expected </{n.getId}>"
-    let mut cs ← `(#[])
-    for child in children do
-      cs ← match child with
-      | `(jsxChild|$t:jsxText)    => `(($cs).push (Html.text $(quote t[0].getAtomVal!)))
-      -- TODO(WN): elab as list of children if type is `t Html` where `Foldable t`
-      | `(jsxChild|{$t})          => `(($cs).push ($t : Html))
-      | `(jsxChild|[$t])          => `($cs ++ ($t : Array Html))
-      | `(jsxChild|$e:jsxElement) => `(($cs).push ($e:jsxElement : Html))
-      | _                         => Macro.throwUnsupported
-    let tag := toString n.getId
-    `(Html.element $(quote tag) false $(← translateAttrs attrs) $cs)
+    let (tag, children) ← htmlHelper n children m
+    `(Html.element $(quote tag) true $(← translateAttrs attrs) $children)
 
 end Jsx
 

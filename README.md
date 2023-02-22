@@ -2,7 +2,9 @@
 
 This is based on the implementation in [`doc-gen4`](https://github.com/leanprover/doc-gen4).
 
-A lake based build may be added later.
+## Using lake
+
+Build using lake with `lake build`
 
 ## Develop with nix
 
