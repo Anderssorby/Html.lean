@@ -113,7 +113,7 @@ private def htmlHelper (n : Syntax) (children : Array Syntax) (m : Syntax) : Mac
   let tag := toString n.getId
   pure <| (tag, cs)
 
-def translateAttrs (attrs : Array Syntax) : MacroM Syntax := do
+def translateAttrs (attrs : Array (TSyntax `Doc.Jsx.jsxAttr)) : MacroM (TSyntax `term) := do
   let mut as ← `(#[])
   for attr in attrs do
     as ← match attr with

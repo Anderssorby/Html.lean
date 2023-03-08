@@ -1,15 +1,18 @@
 import Html
 
-open Doc.Html
+open Doc Doc.Html Doc.Jsx
+
+def test : Html := <h1>Test</h1>
+
 
 def sayHello (s: String): Html :=
-  <div>{"Hello " ++ s}</div>
+  <div>Hello {s ++ "!"} {test}</div>
 
 def main (args : List String) : IO UInt32 := do
   try
-    println! <| sayHello "world"
+    IO.println <| Html.toString <| sayHello "world"
     pure 0
   catch e =>
-    IO.eprintln <| "error: " ++ toString e -- avoid "uncaught exception: ..."
+    IO.eprintln <| "error: " ++ e.toString -- avoid "uncaught exception: ..."
     pure 1
 
